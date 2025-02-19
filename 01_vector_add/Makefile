@@ -1,7 +1,8 @@
 all: build
 
 build:
-	nvcc -o vecadd vecadd.cu
+	mkdir -p bin/
+	nvcc -o bin/vecadd vecadd.cu
 
 run: build
-	./vecadd
+	./bin/vecadd
