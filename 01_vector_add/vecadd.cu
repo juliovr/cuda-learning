@@ -70,10 +70,10 @@ int main()
 {
     float A[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, };
     float B[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, };
+    float C[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, };
+
     int n = sizeof(A) / sizeof(float);
 
-    //    float *C = (float *)malloc(n * sizeof(float));
-    float C[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, };
     vecadd(A, B, C, n);
 
     for (int i = 0; i < n; i++) {
