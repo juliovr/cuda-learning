@@ -66,15 +66,12 @@ u8 *color_to_grayscale_cpu(u8 *p_in, int width, int height, int channels)
     if (p_out) {
         for (int i = 0; i < size; i++) {
             int offset = i*channels;
-            u8 r = p_in[offset + 2];
+            u8 r = p_in[offset + 0];
             u8 g = p_in[offset + 1];
-            u8 b = p_in[offset + 0];
+            u8 b = p_in[offset + 2];
 
             u8 pixel = 0.21f*r + 0.71f*g + 0.07f*b;
             p_out[i] = pixel;
-            // p_out[offset + 0] = 0.3f*r;
-            // p_out[offset + 1] = 0.59f*g;
-            // p_out[offset + 2] = 0.11f*b;
         }
     }
 
@@ -107,23 +104,23 @@ struct BitmapInfoHeader {
     s32 vertical_resolution;
     u32 colors_used;
     u32 important_colors;
-    u32 red_mask;
-    u32 green_mask;
-    u32 blue_mask;
-    u32 alpha_mask;
-    u32 color_space_type;
-    struct {
-        V3 color_space_red;
-        V3 color_space_green;
-        V3 color_space_blue;
-    } color_space_endpoints;
-    u32 gamma_red;
-    u32 gamma_green;
-    u32 gamma_blue;
-    u32 intent;
-    u32 profile_data;
-    u32 profile_size;
-    u32 reserved;
+    // u32 red_mask;
+    // u32 green_mask;
+    // u32 blue_mask;
+    // u32 alpha_mask;
+    // u32 color_space_type;
+    // struct {
+    //     V3 color_space_red;
+    //     V3 color_space_green;
+    //     V3 color_space_blue;
+    // } color_space_endpoints;
+    // u32 gamma_red;
+    // u32 gamma_green;
+    // u32 gamma_blue;
+    // u32 intent;
+    // u32 profile_data;
+    // u32 profile_size;
+    // u32 reserved;
 };
 
 struct Bitmap {
@@ -132,6 +129,21 @@ struct Bitmap {
 };
 #pragma pack(pop)
 
+
+#define COLOR_TABLE_SIZE  (256)
+static u32 color_table[COLOR_TABLE_SIZE];
+
+static void fill_color_table()
+{
+    for (int i = 0; i < COLOR_TABLE_SIZE; i++) {
+        u8 r = i;
+        u8 g = i;
+        u8 b = i;
+        u8 reserved = 0;
+
+        color_table[i] = (reserved << 24) | (b << 16) | (g << 8) | (r << 0);
+    }
+}
 
 void save_to_bitmap(const char *output_filename, u8 *image, int x, int y, int channels_in_file)
 {
@@ -152,6 +164,8 @@ void save_to_bitmap(const char *output_filename, u8 *image, int x, int y, int ch
     info_header.bits_per_pixel = channels_in_file*8;
     info_header.compression = 0;
     info_header.image_size = image_size_bytes;
+    info_header.colors_used = COLOR_TABLE_SIZE;
+    info_header.important_colors = 0;
 
     Bitmap bitmap = {};
     bitmap.header = header;
@@ -177,6 +191,7 @@ void save_to_bitmap(const char *output_filename, u8 *image, int x, int y, int ch
     FILE *output = fopen(output_filename, "wb");
     if (output) {
         fwrite(&bitmap, sizeof(Bitmap), 1, output);
+        fwrite(color_table, COLOR_TABLE_SIZE * sizeof(u32), 1, output);
         fwrite(image, image_size_bytes, 1, output);
     }
 
@@ -186,10 +201,11 @@ void save_to_bitmap(const char *output_filename, u8 *image, int x, int y, int ch
 
 int main()
 {
+    fill_color_table();
+
     int x;
     int y;
     int channels_in_file;
-    int comp;
 
     const char *filename = "image.jpg";
     u8 *image = stbi_load(filename, &x, &y, &channels_in_file, CHANNELS);
@@ -211,6 +227,7 @@ int main()
         image[offset + 2] = tmp;
     }
 #endif
+
 
     u8 *image_grayscale = color_to_grayscale_cpu(image, x, y, CHANNELS);
     if (image_grayscale) {
