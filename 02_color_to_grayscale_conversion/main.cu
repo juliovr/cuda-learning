@@ -51,11 +51,7 @@ void color_to_grayscale_conversion(u8 *p_out, u8 *p_in, int width, int height)
         u8 g = p_in[rgb_offset + 1];
         u8 b = p_in[rgb_offset + 2];
 
-#if 1
         p_out[gray_offset] = 0.21f*r + 0.71f*g + 0.07f*b;
-#else
-        p_out[gray_offset] =
-#endif
     }
 }
 
@@ -203,18 +199,18 @@ int main()
 {
     fill_color_table();
 
-    int x;
-    int y;
+    int width;
+    int height;
     int channels_in_file;
 
     const char *filename = "image.jpg";
-    u8 *image = stbi_load(filename, &x, &y, &channels_in_file, CHANNELS);
+    u8 *image = stbi_load(filename, &width, &height, &channels_in_file, CHANNELS);
     if (image == NULL) {
         fprintf(stderr, "Failed to load image %s: %s\n", filename, stbi_failure_reason());
         exit(EXIT_FAILURE);
     }
 
-    printf("image = %d, x = %d, y = %d, channels_in_file = %d\n", image, x, y, channels_in_file);
+    // printf("image = %d, x = %d, y = %d, channels_in_file = %d\n", image, x, y, channels_in_file);
 
 
 #if 0
@@ -229,12 +225,43 @@ int main()
 #endif
 
 
+#if 1
+    cudaError_t err = cudaSuccess;
+
+    int source_image_size = width*height*CHANNELS;
+    int dest_image_size = width*height;
+
+    u8 *dest_image = (u8 *)malloc(dest_image_size);
+    
+    u8 *source_image_d;
+    u8 *dest_image_d;
+
+    cudaMalloc((void **)&source_image_d, source_image_size);
+    cudaMalloc((void **)&dest_image_d, dest_image_size);
+
+    cudaMemcpy(source_image_d, image, source_image_size, cudaMemcpyHostToDevice);
+
+    dim3 dim_grid(ceil(width / 32.0f), ceil(height / 32.0f), 1);
+    dim3 dim_block(32, 32, 1);
+    color_to_grayscale_conversion<<<dim_grid, dim_block>>>(dest_image_d, source_image_d, width, height);
+
+    cudaMemcpy(dest_image, dest_image_d, dest_image_size, cudaMemcpyDeviceToHost);
+
+    cudaFree(source_image_d);
+    cudaFree(dest_image_d);
+
+    save_to_bitmap("grayscale_gpu.bmp", dest_image, width, height, 1);
+
+    printf("Done\n");
+
+#else
     u8 *image_grayscale = color_to_grayscale_cpu(image, x, y, CHANNELS);
     if (image_grayscale) {
         save_to_bitmap("grayscale.bmp", image_grayscale, x, y, 1);
         printf("Done\n");
         free(image_grayscale);
     }
+#endif
 
     stbi_image_free(image);
 
